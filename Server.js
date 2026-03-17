@@ -3,18 +3,40 @@ import fetch from "node-fetch";
 
 const app = express();
 
-app.get("/proxy", async (req, res) => {
-  const url = req.query.url;
+app.get("/", async (req, res) => {
+  const urlParam = req.query.url;
 
-  const response = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" }
-  });
+  if (!urlParam) {
+    return res.status(400).send("Missing ?url=");
+  }
 
-  const text = await response.text();
-  res.send(text);
+  try {
+    const response = await fetch(urlParam, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept":
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+
+    const buffer = await response.arrayBuffer();
+
+    res.set({
+      "Content-Type":
+        response.headers.get("content-type") || "application/octet-stream",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    res.status(response.status).send(Buffer.from(buffer));
+  } catch (err) {
+    res.status(500).send(`Proxy error: ${err.message}`);
+  }
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log(`Proxy server running on port ${PORT}`);
 });
